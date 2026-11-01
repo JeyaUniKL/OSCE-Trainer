@@ -764,3 +764,52 @@ body {
   background-color: var(--accent-green);
   border-radius: 50%;
 }
+
+.model-select-box {
+  display: flex;
+  align-items: center;
+  background-color: #25428b;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  gap: 6px;
+}
+
+.model-select-label {
+  font-size: 0.72rem;
+  color: #bfdbfe;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.model-dropdown {
+  background-color: #1a3270;
+  color: #ffffff;
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.model-dropdown option {
+  background-color: #1a3270;
+  color: #ffffff;
+}
+
+.custom-model-input {
+  background-color: #1a3270;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  width: 140px;
+  outline: none;
+}
+
+.custom-model-input::placeholder {
+  color: rgba(191, 219, 254, 0.6);
+}

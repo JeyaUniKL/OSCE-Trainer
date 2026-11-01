@@ -5,6 +5,12 @@
  */
 
 window.OSCE_AI = {
+  getModel: function() {
+    return localStorage.getItem('gemini_selected_model') || 'gemini-3.8-flash';
+  },
+  setModel: function(model) {
+    localStorage.setItem('gemini_selected_model', (model || 'gemini-3.8-flash').trim());
+  },
   getApiKey: function() {
     return localStorage.getItem('gemini_api_key') || '';
   },
@@ -40,7 +46,7 @@ window.OSCE_AI = {
           "3. Keep each turn STRICTLY 1 to 2 short sentences (max 25 words). Let the doctor lead.\n" +
           "4. If the doctor uses unexplained jargon, ask what it means in simple lay words.";
 
-        var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key), {
+        var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(this.getModel()) + ':generateContent?key=' + encodeURIComponent(key), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

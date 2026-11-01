@@ -17,6 +17,8 @@
   // DOM Elements
   var stationSelect = document.getElementById('stationSelect');
   var studentIdInput = document.getElementById('studentIdInput');
+  var modelSelect = document.getElementById('modelSelect');
+  var customModelInput = document.getElementById('customModelInput');
   var apiKeyInput = document.getElementById('apiKeyInput');
   var btnSaveKey = document.getElementById('btnSaveKey');
   var btnStartConsult = document.getElementById('btnStartConsult');
@@ -358,6 +360,56 @@
   btnStartConsult.addEventListener('click', startConsultation);
   btnEndGrade.addEventListener('click', endConsultation);
 
+  
+  function updateModelSelectionUI() {
+    var savedModel = window.OSCE_AI.getModel();
+    var knownOptions = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-4-argon'];
+    if (knownOptions.indexOf(savedModel) !== -1) {
+      if (modelSelect) modelSelect.value = savedModel;
+      if (customModelInput) {
+        customModelInput.style.display = 'none';
+        customModelInput.value = '';
+      }
+    } else {
+      if (modelSelect) modelSelect.value = 'custom';
+      if (customModelInput) {
+        customModelInput.style.display = 'inline-block';
+        customModelInput.value = savedModel;
+      }
+    }
+  }
+
+  if (modelSelect) {
+    modelSelect.addEventListener('change', function() {
+      var val = modelSelect.value;
+      if (val === 'custom') {
+        if (customModelInput) {
+          customModelInput.style.display = 'inline-block';
+          customModelInput.focus();
+          if (customModelInput.value.trim()) {
+            window.OSCE_AI.setModel(customModelInput.value.trim());
+          }
+        }
+      } else {
+        if (customModelInput) {
+          customModelInput.style.display = 'none';
+        }
+        window.OSCE_AI.setModel(val);
+        setStatus('Gemini model set to ' + val);
+      }
+    });
+  }
+
+  if (customModelInput) {
+    customModelInput.addEventListener('input', function() {
+      var customVal = customModelInput.value.trim();
+      if (customVal) {
+        window.OSCE_AI.setModel(customVal);
+        setStatus('Custom Gemini model set to ' + customVal);
+      }
+    });
+  }
+
   btnSaveKey.addEventListener('click', function() {
     var k = apiKeyInput.value.trim();
     window.OSCE_AI.setApiKey(k);
@@ -428,6 +480,7 @@
   // Initialize
   var savedKey = window.OSCE_AI.getApiKey();
   if (savedKey) apiKeyInput.value = savedKey;
+  updateModelSelectionUI();
   updateStationUI();
   timerDisplay.textContent = formatTimer(timeRemaining);
 })();

@@ -31,6 +31,17 @@
       </div>
 
       <div class="header-right">
+        <div class="model-select-box" title="Select Gemini model for online dialogue">
+          <label for="modelSelect" class="model-select-label">Model:</label>
+          <select id="modelSelect" class="model-dropdown">
+            <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended)</option>
+            <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+            <option value="gemini-flash-latest">gemini-flash-latest</option>
+            <option value="gemini-4-argon">gemini-4-argon</option>
+            <option value="custom">Custom model...</option>
+          </select>
+          <input type="text" id="customModelInput" class="custom-model-input" placeholder="e.g. gemini-3.8-flash" style="display: none;">
+        </div>
         <div class="api-key-box" title="Enter your Gemini API key for online streaming AI dialogue. If left blank, offline clinical engine will simulate the parent.">
           <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Gemini API Key...">
           <button type="button" id="btnSaveKey" class="btn-key-save">Save</button>
