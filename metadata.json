@@ -1,0 +1,8 @@
+{
+  "name": "Pediatric OSCE Exam Simulator",
+  "description": "High-fidelity Year 5 Paediatric OSCE clinical exam simulator with simulated Malaysian parent personas and 20-mark consultant paediatrician examiner evaluation.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
