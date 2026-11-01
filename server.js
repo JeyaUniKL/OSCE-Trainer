@@ -47,9 +47,11 @@ app.get('/api/health', (req, res) => {
 
 // Model list with fallbacks
 const MODELS = [
-  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
   'gemini-3.5-flash',
-  'gemini-3.8-flash'
+  'gemini-3.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-4-argon'
 ];
 
 // Proxy endpoint for Gemini generation
@@ -60,7 +62,7 @@ app.post('/api/generate', async (req, res) => {
   }
 
   const { contents, safetySettings, generationConfig, model } = req.body;
-  const requestedModel = model || 'gemini-3.5-flash-lite';
+  const requestedModel = model || 'gemini-3.8-flash';
   const modelsToTry = [requestedModel, ...MODELS.filter(m => m !== requestedModel)];
 
   let lastError = null;
