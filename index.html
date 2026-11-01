@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pediatric OSCE Simulator (Year 5)</title>
+  <meta name="description" content="Final-year Pediatric OSCE consultation simulator with 10 clinical stations, authentic Malaysian parental persona, and Consultant 20-mark evaluation rubric.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- =========================================================================
+       TOP HEADER & NAVIGATION
+       ========================================================================= -->
+  <header class="header-bar">
+    <div class="header-inner">
+      <div class="header-left">
+        <span class="app-title">Pediatric OSCE</span>
+        <span class="app-badge">Year 5</span>
+        <select id="stationSelect" class="station-dropdown" title="Select Pediatric OSCE Station">
+          <option value="nephrotic">1. Idiopathic Nephrotic Syndrome (Adam, 4yo)</option>
+          <option value="febrile_convulsion">2. Febrile Convulsion (Aisyah, 18mo)</option>
+          <option value="asthma_discharge">3. Asthma Discharge & Inhaler (Wei Jian, 6yo)</option>
+          <option value="neonatal_jaundice">4. Neonatal Jaundice (Baby Kavitha, 3d)</option>
+          <option value="dengue_fever">5. Dengue Fever Home Care (Danish, 10yo)</option>
+          <option value="hfmd">6. HFMD Home Supportive Care (Lucas, 3yo)</option>
+          <option value="bronchiolitis">7. Acute Bronchiolitis (Haris, 6mo)</option>
+          <option value="gastroenteritis">8. Acute Gastroenteritis & ORS (Mei Ling, 2yo)</option>
+          <option value="thalassemia">9. Beta-Thalassemia Major (Harith, 8mo)</option>
+          <option value="g6pd">10. G6PD Deficiency Counseling (Baby Sanjay, 2d)</option>
+        </select>
+      </div>
+
+      <div class="header-right">
+        <div class="api-key-box" title="Enter your Gemini API key for online streaming AI dialogue. If left blank, offline clinical engine will simulate the parent.">
+          <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Gemini API Key...">
+          <button type="button" id="btnSaveKey" class="btn-key-save">Save</button>
+        </div>
+        <button type="button" id="btnEndGrade" class="btn-end-grade" disabled>End Consultation & Grade</button>
+        <div id="timerDisplay" class="timer-display">10:00</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN CLINICAL CONSOLE
+       ========================================================================= -->
+  <main class="main-layout">
+    <!-- Scenario Briefing Card -->
+    <section class="scenario-card">
+      <div class="scenario-header-row">
+        <div>
+          <h1 id="stationTitle" class="station-title">Station Title</h1>
+          <p id="scenarioBrief" class="scenario-brief-text">Scenario briefing loading...</p>
+          <p class="candidate-tasks">
+            <span class="task-label">Your Tasks:</span> <span id="candidateTasks">Candidate tasks loading...</span>
+          </p>
+        </div>
+
+        <div class="voice-controls">
+          <div class="voice-toggle-pill">
+            <span>Voice:</span>
+            <button type="button" id="voiceGenderBtn" class="btn-text-link">Natural Female 👩</button>
+            <button type="button" id="muteAudioBtn" class="btn-audio-mute" title="Toggle audio sound">🔊</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="candidate-row">
+        <div class="student-input-group">
+          <label for="studentIdInput" class="student-label">Student Name / ID:</label>
+          <input type="text" id="studentIdInput" class="student-id-field" placeholder="e.g. Dr. 23333" value="23333">
+        </div>
+
+        <button type="button" id="btnStartConsult" class="btn-start-consult">
+          ▶ Start Consultation
+        </button>
+      </div>
+    </section>
+
+    <!-- Chat & Interaction Window -->
+    <section class="chat-window">
+      <div id="messagesContainer" class="messages-container">
+        <div id="welcomePill" class="station-welcome-pill">
+          Enter your Name/ID and click 'Start Consultation' to begin.
+        </div>
+      </div>
+
+      <!-- Bottom Input Dock -->
+      <div class="input-dock">
+        <div id="micRecordingBar" class="mic-recording-bar" style="display: none;">
+          <span>🎙️ <strong>Microphone Recording:</strong> Speak your consultation statement in Malaysian English...</span>
+          <button type="button" id="btnDoneMic" class="btn-done-mic">Done Speaking</button>
+        </div>
+
+        <form id="chatForm" class="input-form">
+          <button type="button" id="btnMicSpeak" class="btn-mic-speak" title="Click to speak via microphone in Malaysian English">🎤 Speak</button>
+          <input type="text" id="messageInput" class="message-text-input" placeholder="Type or click 'Speak' to introduce yourself... (Press Enter to Send)" autocomplete="off">
+          <button type="submit" id="btnSend" class="btn-send">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Footer Status Bar -->
+    <footer class="footer-status-bar">
+      <div id="statusText">Ready. Please enter your Student Name/ID to begin.</div>
+      <div class="offline-badge">
+        <span class="dot-green"></span>
+        <span>Offline Clinical Engine Ready | 10 Paediatric Stations</span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Modular Scripts adhering to INSTRUCTIONS.md -->
+  <script src="js/stations.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
