@@ -10,6 +10,6 @@ permission from a human
 changes
 - Place all style class definitions into a separate css file and link the
 respective html to it
-- Place all javascript function definition into separate javascript file and 
-the respective html to it
+- Place all javascript function definition into separate javascript files and 
+link the respective html to it
 
