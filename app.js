@@ -131,6 +131,7 @@ let isLiveVoiceActive = false;
 let isLiveVoiceMuted = false;
 let liveSilenceTimer = null;
 let isSpSpeaking = false;
+let availableVoices = [];
 
 const safetySettings = [
     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -138,6 +139,68 @@ const safetySettings = [
     { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
     { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
 ];
+
+// Pre-load speech synthesis voices
+function loadSpeechVoices() {
+    if (!('speechSynthesis' in window)) return;
+    availableVoices = window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+            availableVoices = window.speechSynthesis.getVoices();
+        };
+    }
+}
+
+// Pick most natural Malaysian / Commonwealth female voice for Puan Siti
+function getBestFemaleVoice() {
+    if (!availableVoices.length && 'speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+    }
+    if (!availableVoices.length) return null;
+
+    const maleBlacklist = ['male', 'david', 'george', 'mark', 'alex', 'guy', 'daniel', 'fred', 'stefan', 'rishi'];
+    const chineseBlacklist = ['zh', 'chinese', 'mandarin', 'cmn', 'xiaoxiao', 'huihui', 'yaoyao', 'kangkang', 'zhiwei'];
+
+    const isExcluded = (v) => {
+        const n = v.name.toLowerCase();
+        const l = v.lang.toLowerCase();
+        return maleBlacklist.some(m => n.includes(m)) || chineseBlacklist.some(c => n.includes(c) || l.startsWith(c));
+    };
+
+    // Priority 1: Malaysian English female (Yasmin, Siti, en-MY, ms-MY)
+    const malaysian = availableVoices.find(v => {
+        if (isExcluded(v)) return false;
+        const n = v.name.toLowerCase();
+        const l = v.lang.toLowerCase();
+        return (l.startsWith('en-my') || l.startsWith('ms-my') || n.includes('malaysia') || n.includes('yasmin') || n.includes('siti'));
+    });
+    if (malaysian) return malaysian;
+
+    // Priority 2: Singapore English female
+    const sg = availableVoices.find(v => !isExcluded(v) && v.lang.toLowerCase().startsWith('en-sg'));
+    if (sg) return sg;
+
+    // Priority 3: British / Commonwealth female (taught in Malaysian medical schools)
+    const british = availableVoices.find(v => {
+        if (isExcluded(v)) return false;
+        const n = v.name.toLowerCase();
+        const l = v.lang.toLowerCase();
+        return (l.startsWith('en-gb') || l.startsWith('en-au')) && (n.includes('natural') || n.includes('online') || n.includes('google') || n.includes('sonia') || n.includes('libby'));
+    });
+    if (british) return british;
+
+    // Priority 4: Any English female
+    const anyFemale = availableVoices.find(v => {
+        if (isExcluded(v)) return false;
+        const n = v.name.toLowerCase();
+        const l = v.lang.toLowerCase();
+        return l.startsWith('en') && (n.includes('female') || n.includes('natural') || n.includes('samantha') || n.includes('serena') || n.includes('karen') || n.includes('aria') || n.includes('jenny'));
+    });
+    if (anyFemale) return anyFemale;
+
+    const fallbackEn = availableVoices.find(v => !isExcluded(v) && v.lang.toLowerCase().startsWith('en'));
+    return fallbackEn || availableVoices[0] || null;
+}
 
 // UNIVERSAL URL SCANNER (Scans full browser URL for matching station)
 function detectAssignedStation() {
@@ -158,6 +221,13 @@ function detectAssignedStation() {
 window.onload = () => {
     initModelSelector();
     initApiKey();
+    loadSpeechVoices();
+    
+    // Set Open in Tab link to current URL so users can easily pop out of iframes
+    const tabLink = document.getElementById('btn-tab-link');
+    if (tabLink) {
+        tabLink.href = window.location.href;
+    }
     
     if (!window.OSCE_STATIONS || Object.keys(window.OSCE_STATIONS).length === 0) {
         const statusEl = document.getElementById('status-text');
@@ -257,8 +327,19 @@ function validatePrerequisites() {
     return valid;
 }
 
+// Unlock audio context on user gesture to avoid browser autoplay blocks
+function unlockAudioPlayback() {
+    if ('speechSynthesis' in window) {
+        try {
+            window.speechSynthesis.resume();
+        } catch (e) {}
+    }
+}
+
 function startStation() {
     if (!validatePrerequisites()) return;
+    unlockAudioPlayback();
+
     if (!hasStarted) {
         hasStarted = true;
         const startBtn = document.getElementById('btn-start');
@@ -402,132 +483,207 @@ async function callGeminiSP() {
     }
 }
 
-// --- TEXT-TO-SPEECH (MALAYSIAN ENGLISH INTONATION) ---
+// --- TEXT-TO-SPEECH (MALAYSIAN ENGLISH INTONATION WITH CHROME FIX) ---
 function speakParent(text) {
     if (!('speechSynthesis' in window)) return;
     
-    window.speechSynthesis.cancel();
-    isSpSpeaking = true;
-    
+    // Clean text of markdown/asterisks
+    const cleanText = (text || '')
+        .replace(/\*\*.*?\*\*/g, m => m.replace(/\*\*/g, ''))
+        .replace(/[*_#`~]/g, '')
+        .replace(/<[^>]*>/g, '')
+        .trim();
+        
+    if (!cleanText) return;
+
     // Pause speech recognition while mother speaks to prevent feedback echo
     if (isLiveVoiceActive && recognition && isRecording) {
         try { recognition.stop(); } catch (e) { }
     }
-    
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.pitch = 1.0;
-    utt.rate = 0.95;
-    
-    utt.onend = () => {
+
+    try {
+        window.speechSynthesis.resume();
+        window.speechSynthesis.cancel();
+        
+        isSpSpeaking = true;
+        const utt = new SpeechSynthesisUtterance(cleanText);
+        
+        // Critical: retain reference on window to prevent Chrome V8 garbage collection bug
+        window.__activeUtterance = utt;
+        
+        const femaleVoice = getBestFemaleVoice();
+        if (femaleVoice) {
+            utt.voice = femaleVoice;
+        }
+        utt.pitch = 1.05;
+        utt.rate = 0.95;
+        
+        let hasFinished = false;
+        const cleanup = () => {
+            if (!hasFinished) {
+                hasFinished = true;
+                window.__activeUtterance = null;
+                isSpSpeaking = false;
+                if (isLiveVoiceActive && !isLiveVoiceMuted) {
+                    resumeLiveVoiceListening();
+                }
+            }
+        };
+        
+        utt.onend = cleanup;
+        utt.onerror = cleanup;
+        
+        // Watchdog timer: ensure speaking flag is guaranteed to reset
+        const words = cleanText.split(/\s+/).length;
+        setTimeout(cleanup, Math.max(3000, words * 550 + 2000));
+        
+        window.speechSynthesis.speak(utt);
+        
+        // Chrome quirk: double-resume if speak() begins in paused state
+        setTimeout(() => {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            }
+        }, 50);
+    } catch (e) {
+        console.warn("Speech synthesis error:", e);
         isSpSpeaking = false;
         if (isLiveVoiceActive && !isLiveVoiceMuted) {
             resumeLiveVoiceListening();
         }
-    };
-    
-    utt.onerror = () => {
-        isSpSpeaking = false;
-        if (isLiveVoiceActive && !isLiveVoiceMuted) {
-            resumeLiveVoiceListening();
-        }
-    };
-    
-    window.speechSynthesis.speak(utt);
+    }
 }
 
-// --- SPEECH RECOGNITION SETUP ---
+// --- SPEECH RECOGNITION SETUP WITH PERMISSION PROMPT ---
 function setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        document.getElementById('status-text').innerText = "Speech-to-text not supported in this browser. Please type.";
-        return;
+        const statusEl = document.getElementById('status-text');
+        if (statusEl) statusEl.innerText = "Speech-to-text requires Google Chrome or Microsoft Edge. Please type.";
+        return null;
     }
     
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    
-    recognition.onstart = () => {
-        isRecording = true;
-        if (!isLiveVoiceActive) {
-            const btn = document.getElementById('btn-mic');
-            if (btn) {
-                btn.classList.add('recording');
-                btn.innerText = "⏹ Stop Mic";
-            }
-            document.getElementById('status-text').innerText = "Listening... Speak clearly.";
-        } else {
-            const desc = document.getElementById('live-status-desc');
-            if (desc) desc.innerText = `Hands-free listening active. Speak to ${currentStation ? currentStation.parentName : 'the parent'}...`;
+    try {
+        if (recognition) {
+            try { recognition.stop(); } catch (e) {}
         }
-    };
-    
-    recognition.onresult = (event) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                accumulatedSpeech += event.results[i][0].transcript + ' ';
-            } else {
-                interim += event.results[i][0].transcript;
-            }
-        }
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
         
-        const fullTranscript = (accumulatedSpeech + interim).trim();
-        document.getElementById('doctor-input').value = fullTranscript;
-        
-        // In Live Voice mode, detect candidate silence to auto-send
-        if (isLiveVoiceActive && !isLiveVoiceMuted && fullTranscript.length > 0) {
-            clearTimeout(liveSilenceTimer);
-            liveSilenceTimer = setTimeout(() => {
-                if (isLiveVoiceActive && !isSpSpeaking && fullTranscript.length > 0) {
-                    sendMessage();
+        recognition.onstart = () => {
+            isRecording = true;
+            if (!isLiveVoiceActive) {
+                const btn = document.getElementById('btn-mic');
+                if (btn) {
+                    btn.classList.add('recording');
+                    btn.innerText = "⏹ Stop Mic";
                 }
-            }, 1600);
-        }
-    };
-    
-    recognition.onerror = (event) => {
-        console.warn("Speech recognition notice:", event.error);
-        if (event.error === 'not-allowed') {
-            document.getElementById('status-text').innerText = "Microphone access blocked. Please enable mic permissions in your browser.";
-            if (isLiveVoiceActive) stopLiveVoice();
-        }
-    };
-    
-    recognition.onend = () => {
-        if (isLiveVoiceActive && !isSpSpeaking && !isLiveVoiceMuted) {
-            try { recognition.start(); } catch (e) { }
-        } else if (isRecording && !isLiveVoiceActive) {
-            try { recognition.start(); } catch (e) { }
-        } else {
-            stopMicUI();
-        }
-    };
+                document.getElementById('status-text').innerText = "🎙️ Listening... Speak clearly in Malaysian English.";
+            } else {
+                const desc = document.getElementById('live-status-desc');
+                if (desc) desc.innerText = `Hands-free listening active. Speak to ${currentStation ? currentStation.parentName : 'the parent'}...`;
+            }
+        };
+        
+        recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    accumulatedSpeech += event.results[i][0].transcript + ' ';
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            
+            const fullTranscript = (accumulatedSpeech + interim).trim();
+            document.getElementById('doctor-input').value = fullTranscript;
+            
+            // In Live Voice mode, detect candidate silence to auto-send
+            if (isLiveVoiceActive && !isLiveVoiceMuted && fullTranscript.length > 0) {
+                clearTimeout(liveSilenceTimer);
+                liveSilenceTimer = setTimeout(() => {
+                    if (isLiveVoiceActive && !isSpSpeaking && fullTranscript.length > 0) {
+                        sendMessage();
+                    }
+                }, 1600);
+            }
+        };
+        
+        recognition.onerror = (event) => {
+            console.warn("Speech recognition notice:", event.error);
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                const isIframe = window.self !== window.top;
+                document.getElementById('status-text').innerText = isIframe
+                    ? "⚠️ Microphone blocked by browser frame. Click '↗ Open in Tab' (top right) to use mic directly."
+                    : "⚠️ Microphone access blocked. Please click the lock/camera icon in your browser URL bar to allow microphone.";
+                stopMicUI();
+                if (isLiveVoiceActive) stopLiveVoice();
+            }
+        };
+        
+        recognition.onend = () => {
+            if (isLiveVoiceActive && !isSpSpeaking && !isLiveVoiceMuted) {
+                try { recognition.start(); } catch (e) { }
+            } else if (isRecording && !isLiveVoiceActive) {
+                try { recognition.start(); } catch (e) { }
+            } else {
+                stopMicUI();
+            }
+        };
+        return recognition;
+    } catch (err) {
+        console.warn("Error creating SpeechRecognition instance:", err);
+        return null;
+    }
 }
 
 // --- SINGLE-TURN MIC HANDLERS ---
-function toggleMic() {
+async function toggleMic() {
+    unlockAudioPlayback();
+
     if (isLiveVoiceActive) {
         stopLiveVoice();
     }
     
-    if (!recognition) {
-        document.getElementById('status-text').innerText = "Microphone recognition requires Chrome or Edge.";
+    // Stop mother's voice immediately if doctor wants to speak
+    if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    isSpSpeaking = false;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        document.getElementById('status-text').innerText = "Microphone recognition requires Google Chrome or Microsoft Edge.";
         return;
     }
     
     if (isRecording) {
         isRecording = false;
-        recognition.stop();
+        if (recognition) {
+            try { recognition.stop(); } catch (e) {}
+        }
         stopMicUI();
     } else {
+        // Explicitly request mic permission if not yet permitted
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Release audio track immediately as SpeechRecognition will use it
+                stream.getTracks().forEach(t => t.stop());
+            } catch (permErr) {
+                console.warn("Mic permission request:", permErr);
+            }
+        }
+        
+        setupSpeechRecognition();
         accumulatedSpeech = document.getElementById('doctor-input').value;
         if (accumulatedSpeech && !accumulatedSpeech.endsWith(' ')) accumulatedSpeech += ' ';
         try {
             recognition.start();
         } catch (e) {
-            isRecording = false;
+            console.warn("Mic start warning:", e);
         }
     }
 }
@@ -542,22 +698,34 @@ function stopMicUI() {
 }
 
 // --- LIVE VOICE MODE HANDLERS ---
-function toggleLiveVoice() {
+async function toggleLiveVoice() {
+    unlockAudioPlayback();
     if (isLiveVoiceActive) {
         stopLiveVoice();
     } else {
-        startLiveVoice();
+        await startLiveVoice();
     }
 }
 
-function startLiveVoice() {
+async function startLiveVoice() {
     if (!validatePrerequisites()) return;
     if (!hasStarted) startStation();
+    unlockAudioPlayback();
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Live Voice requires speech recognition support in Google Chrome or Microsoft Edge.");
+        alert("Live Voice requires speech recognition in Google Chrome or Microsoft Edge.");
         return;
+    }
+
+    // Explicitly prompt mic permissions if needed
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(t => t.stop());
+        } catch (permErr) {
+            console.warn("Live mic permission check:", permErr);
+        }
     }
     
     isLiveVoiceActive = true;
@@ -603,6 +771,8 @@ function resumeLiveVoiceListening() {
     const doctorInput = document.getElementById('doctor-input');
     if (doctorInput) doctorInput.value = '';
     
+    setupSpeechRecognition();
+    
     if (recognition) {
         try {
             recognition.start();
@@ -635,6 +805,7 @@ function toggleLiveMute() {
 function sendMessage() {
     if (!validatePrerequisites()) return;
     if (!hasStarted) startStation();
+    unlockAudioPlayback();
     
     clearTimeout(liveSilenceTimer);
     
@@ -759,7 +930,7 @@ EXAMINER SUMMARY:
 
 // Google Sheets Logging
 async function sendResultsToGoogleSheet(candidateId, transcriptText, feedbackReport) {
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL3n7XWkWg4sQf1X_bT6pE_EXAMPLE/exec"; // Placeholder or configured hook
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL3n7XWkWg4sQf1X_bT6pE_EXAMPLE/exec";
     if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("EXAMPLE")) {
         document.getElementById('status-text').innerText = "OSCE Mark sheet complete. Ready for review.";
         return;

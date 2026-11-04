@@ -598,3 +598,22 @@ button {
         transform: translateY(0);
     }
 }
+
+.btn-tab-link {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(147, 197, 253, 0.3);
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+
+.btn-tab-link:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
