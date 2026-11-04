@@ -1,130 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pediatric OSCE Simulator (Year 5)</title>
-  <meta name="description" content="Final-year Pediatric OSCE consultation simulator with 10 clinical stations, authentic Malaysian parental persona, and Consultant 20-mark evaluation rubric.">
-  <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <title>Pediatric OSCE Simulator (Year 5)</title>
+    <meta name="description" content="High-fidelity Year 5 Paediatric OSCE clinical exam simulator with simulated Malaysian parent personas, live voice dialogue, and 20-mark consultant paediatrician examiner evaluation.">
+    <meta property="og:title" content="Pediatric OSCE Simulator (Year 5)">
+    <meta property="og:description" content="High-fidelity Year 5 Paediatric OSCE clinical exam simulator with simulated Malaysian parent personas, live voice dialogue, and 20-mark consultant paediatrician examiner evaluation.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./styles.css">
+    <!-- LOAD CATALOG & TRANSCRIPT SCRIPT WITH CACHE BUSTING -->
+    <script src="./stations.js?v=3"></script>
+    <script src="./transcript.js?v=1"></script>
 </head>
 <body>
-  <!-- =========================================================================
-       TOP HEADER & NAVIGATION
-       ========================================================================= -->
-  <header class="header-bar">
-    <div class="header-inner">
-      <div class="header-left">
-        <span class="app-title">Pediatric OSCE</span>
-        <span class="app-badge">Year 5</span>
-        <select id="stationSelect" class="station-dropdown" title="Select Pediatric OSCE Station">
-          <option value="nephrotic">1. Idiopathic Nephrotic Syndrome (Adam, 4yo)</option>
-          <option value="febrile_convulsion">2. Febrile Convulsion (Aisyah, 18mo)</option>
-          <option value="asthma_discharge">3. Asthma Discharge & Inhaler (Wei Jian, 6yo)</option>
-          <option value="neonatal_jaundice">4. Neonatal Jaundice (Baby Kavitha, 3d)</option>
-          <option value="dengue_fever">5. Dengue Fever Home Care (Danish, 10yo)</option>
-          <option value="hfmd">6. HFMD Home Supportive Care (Lucas, 3yo)</option>
-          <option value="bronchiolitis">7. Acute Bronchiolitis (Haris, 6mo)</option>
-          <option value="gastroenteritis">8. Acute Gastroenteritis & ORS (Mei Ling, 2yo)</option>
-          <option value="thalassemia">9. Beta-Thalassemia Major (Harith, 8mo)</option>
-          <option value="g6pd">10. G6PD Deficiency Counseling (Baby Sanjay, 2d)</option>
-        </select>
-      </div>
+    <div class="container">
+        <!-- TOP HEADER -->
+        <header>
+            <div class="header-left">
+                <h1>Pediatric OSCE</h1>
+                <span class="version-tag">Build 3.0</span>
+                <select class="station-select" id="station-select" onchange="onStationChanged(this.value)"></select>
+                <span class="exam-lock-banner" id="exam-lock-banner">🔒 EXAM ASSIGNED: <span id="locked-station-name"></span></span>
+            </div>
+            
+            <div class="header-controls">
+                <!-- MODEL SELECTOR -->
+                <div class="model-select-wrapper" title="Select Gemini Model for roleplay & examiner evaluation">
+                    <label for="model-select" class="header-label">Model:</label>
+                    <select id="model-select" class="model-select" onchange="onModelSelected(this.value)">
+                        <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended)</option>
+                        <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+                        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+                        <option value="gemini-flash-latest">gemini-flash-latest</option>
+                        <option value="gemini-4-argon">gemini-4-argon</option>
+                        <option value="custom">Custom model...</option>
+                    </select>
+                    <input type="text" id="custom-model-input" class="custom-model-input" placeholder="e.g. gemini-3.8-flash" oninput="onCustomModelInput(this.value)">
+                </div>
 
-      <div class="header-right">
-        <div class="model-select-box" title="Select Gemini model for online dialogue">
-          <label for="modelSelect" class="model-select-label">Model:</label>
-          <select id="modelSelect" class="model-dropdown">
-            <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended)</option>
-            <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
-            <option value="gemini-flash-latest">gemini-flash-latest</option>
-            <option value="gemini-4-argon">gemini-4-argon</option>
-            <option value="custom">Custom model...</option>
-          </select>
-          <input type="text" id="customModelInput" class="custom-model-input" placeholder="e.g. gemini-3.8-flash" style="display: none;">
+                <!-- GEMINI API KEY BOX FOR GITHUB PAGES -->
+                <div class="key-wrapper" id="key-wrapper" title="Enter your Gemini API key to enable direct AI roleplay & examiner evaluation on GitHub Pages">
+                    <input type="password" id="gemini-api-key" placeholder="Gemini API Key..." oninput="onApiKeyInput(this.value)" autocomplete="off">
+                    <button type="button" class="btn-toggle-key" id="btn-toggle-key" onclick="toggleApiKeyVisibility()" title="Show/Hide API Key">👁️</button>
+                    <button type="button" class="btn-save-key" id="btn-save-key" onclick="saveApiKey()">Save</button>
+                </div>
+
+                <button class="btn-danger" id="btn-end" onclick="endStation()">End Station</button>
+                <div class="timer-badge" id="timer-display">10:00</div>
+            </div>
+        </header>
+
+        <!-- TOP PANEL -->
+        <div class="top-panel" id="top-panel">
+            <div class="instruction-card" id="instruction-content">
+                <h2 id="station-title">Loading Station...</h2>
+                <p id="station-brief"></p>
+                <p><strong>Your Tasks:</strong> <span id="station-tasks"></span></p>
+                <div class="start-bar">
+                    <div class="student-entry">
+                        <label for="candidate-id">Student Name / ID:</label>
+                        <input type="text" id="candidate-id" placeholder="e.g. Dr. Sarah / Matric 210045" oninput="saveCandidateId()">
+                    </div>
+                    <button class="btn-success" id="btn-start" onclick="startStation()">▶ Start Consultation</button>
+                </div>
+            </div>
         </div>
-        <div class="api-key-box" title="Enter your Gemini API key for online streaming AI dialogue. If left blank, offline clinical engine will simulate the parent.">
-          <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Gemini API Key...">
-          <button type="button" id="btnSaveKey" class="btn-key-save">Save</button>
+
+        <!-- CHAT AREA -->
+        <div class="chat-container">
+            <!-- LIVE VOICE ACTIVE STATUS BANNER -->
+            <div class="live-status-banner" id="live-status-banner">
+                <div class="live-status-left">
+                    <span class="live-pulse-dot"></span>
+                    <span class="live-badge">LIVE VOICE ACTIVE</span>
+                    <span id="live-status-desc">Hands-free dialogue active. Speak to Puan Siti in Malaysian English.</span>
+                </div>
+                <div class="live-controls">
+                    <button type="button" class="btn-live-sub" id="btn-live-mute" onclick="toggleLiveMute()">Mic On</button>
+                    <button type="button" class="btn-live-sub btn-live-stop" onclick="stopLiveVoice()">End Live</button>
+                </div>
+            </div>
+
+            <div class="transcript-box" id="transcript">
+                <div class="msg msg-system" id="system-welcome">Loading...</div>
+            </div>
+
+            <!-- Active Input Bar -->
+            <div class="input-bar">
+                <button type="button" class="btn-live" id="btn-live" onclick="toggleLiveVoice()" title="Toggle hands-free live spoken consultation (continuous voice dialogue)">
+                    <span class="live-indicator-dot"></span>
+                    <span id="btn-live-text">🔴 Live Voice</span>
+                </button>
+                <button type="button" class="btn-mic" id="btn-mic" onclick="toggleMic()">🎤 Speak</button>
+                <textarea id="doctor-input" placeholder="Type or click 'Speak' / 'Live Voice' to consult... (Press Enter to Send)" onkeydown="handleKeyPress(event)"></textarea>
+                <button type="button" class="btn-primary btn-send" id="btn-send" onclick="sendMessage()">Send</button>
+            </div>
+            <div class="status-text" id="status-text">Ready. Please enter your Student Name/ID and click 'Start Consultation' to begin.</div>
         </div>
-        <button type="button" id="btnEndGrade" class="btn-end-grade" disabled>End Consultation & Grade</button>
-        <div id="timerDisplay" class="timer-display">10:00</div>
-      </div>
     </div>
-  </header>
 
-  <!-- =========================================================================
-       MAIN CLINICAL CONSOLE
-       ========================================================================= -->
-  <main class="main-layout">
-    <!-- Scenario Briefing Card -->
-    <section class="scenario-card">
-      <div class="scenario-header-row">
-        <div>
-          <h1 id="stationTitle" class="station-title">Station Title</h1>
-          <p id="scenarioBrief" class="scenario-brief-text">Scenario briefing loading...</p>
-          <p class="candidate-tasks">
-            <span class="task-label">Your Tasks:</span> <span id="candidateTasks">Candidate tasks loading...</span>
-          </p>
-        </div>
-
-        <div class="voice-controls">
-          <div class="voice-toggle-pill">
-            <span>Voice:</span>
-            <button type="button" id="voiceGenderBtn" class="btn-text-link">Natural Female 👩</button>
-            <button type="button" id="muteAudioBtn" class="btn-audio-mute" title="Toggle audio sound">🔊</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="candidate-row">
-        <div class="student-input-group">
-          <label for="studentIdInput" class="student-label">Student Name / ID:</label>
-          <input type="text" id="studentIdInput" class="student-id-field" placeholder="e.g. Dr. 23333" value="23333">
-        </div>
-
-        <button type="button" id="btnStartConsult" class="btn-start-consult">
-          ▶ Start Consultation
-        </button>
-      </div>
-    </section>
-
-    <!-- Chat & Interaction Window -->
-    <section class="chat-window">
-      <div id="messagesContainer" class="messages-container">
-        <div id="welcomePill" class="station-welcome-pill">
-          Enter your Name/ID and click 'Start Consultation' to begin.
-        </div>
-      </div>
-
-      <!-- Bottom Input Dock -->
-      <div class="input-dock">
-        <div id="micRecordingBar" class="mic-recording-bar" style="display: none;">
-          <span>🎙️ <strong>Microphone Recording:</strong> Speak your consultation statement in Malaysian English...</span>
-          <button type="button" id="btnDoneMic" class="btn-done-mic">Done Speaking</button>
-        </div>
-
-        <form id="chatForm" class="input-form">
-          <button type="button" id="btnMicSpeak" class="btn-mic-speak" title="Click to speak via microphone in Malaysian English">🎤 Speak</button>
-          <input type="text" id="messageInput" class="message-text-input" placeholder="Type or click 'Speak' to introduce yourself... (Press Enter to Send)" autocomplete="off">
-          <button type="submit" id="btnSend" class="btn-send">Send</button>
-        </form>
-      </div>
-    </section>
-
-    <!-- Footer Status Bar -->
-    <footer class="footer-status-bar">
-      <div id="statusText">Ready. Please enter your Student Name/ID to begin.</div>
-      <div class="offline-badge">
-        <span class="dot-green"></span>
-        <span>Offline Clinical Engine Ready | 10 Paediatric Stations</span>
-      </div>
-    </footer>
-  </main>
-
-  <!-- Modular Scripts adhering to INSTRUCTIONS.md -->
-  <script src="js/stations.js"></script>
-  <script src="js/speech.js"></script>
-  <script src="js/ai.js"></script>
-  <script src="js/app.js"></script>
+    <script src="./app.js"></script>
 </body>
 </html>

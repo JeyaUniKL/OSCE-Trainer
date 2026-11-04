@@ -1,0 +1,15 @@
+{
+  "name": "yr-5-osce-combined",
+  "version": "1.0.0",
+  "description": "Pediatric OSCE Simulator (Year 5)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Build complete'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
