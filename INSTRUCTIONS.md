@@ -1,6 +1,7 @@
 ## INSTRUCTIONS FOR LLMS
 
-- Never change the INSTRUCTIONS.md file or its contents
+- Never change the files; README.md, INSTRUCTIONS.md, robots.txt; or its
+  contents
 - Never commit directly to the main branch of the repository
 - Allowed languages; javascript, html, css
 - Do not install package managers without permission from a human
